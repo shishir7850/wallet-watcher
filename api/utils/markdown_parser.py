@@ -8,6 +8,16 @@ DATE_FORMATS = [
     "%m/%d", "%m-%d",
 ]
 
+# Regex for lines like: 01/15 STARBUCKS STORE 12345 -4.85
+# or: 01/15/2025  STARBUCKS STORE 12345  $4.85
+LINE_PATTERN = re.compile(
+    r"^(\d{1,2}[/\-]\d{1,2}(?:[/\-]\d{2,4})?)"  # date
+    r"\s+"
+    r"(.+?)"                                       # description
+    r"\s+"
+    r"(-?\$?[\d,]+\.\d{2})\s*$"                   # amount
+)
+
 
 def parse_markdown_tables(markdown_text: str) -> list[list[str]]:
     """Extract all rows from markdown tables in the text."""
@@ -19,13 +29,33 @@ def parse_markdown_tables(markdown_text: str) -> list[list[str]]:
         # Skip separator rows like |---|---|
         if re.match(r"^\|[\s\-:|]+\|$", line):
             continue
-        cells = [c.strip() for c in line.split("|")]
-        # split on | gives empty strings at start/end
-        cells = [c for c in cells if c != "" or line.count("|") <= 2]
         cells = [c.strip() for c in line.split("|")[1:-1]]
         if cells:
             rows.append(cells)
     return rows
+
+
+def parse_lines(markdown_text: str) -> list[dict]:
+    """Fallback parser: extract transactions from plain text lines with date + description + amount."""
+    transactions = []
+    for line in markdown_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = LINE_PATTERN.match(line)
+        if m:
+            date_str = try_parse_date(m.group(1))
+            if not date_str:
+                continue
+            description = m.group(2).strip()
+            amount = try_parse_amount(m.group(3))
+            if amount is not None and description:
+                transactions.append({
+                    "date": date_str,
+                    "description": description,
+                    "amount": amount,
+                })
+    return transactions
 
 
 def try_parse_date(value: str) -> str | None:

@@ -2,6 +2,7 @@ from api.formats.base import BaseParser
 from api.utils.transaction import Transaction
 from api.utils.markdown_parser import (
     parse_markdown_tables,
+    parse_lines,
     try_parse_date,
     try_parse_amount,
     identify_columns,
@@ -10,20 +11,34 @@ from api.utils.markdown_parser import (
 
 class GenericParser(BaseParser):
     def parse(self, markdown_text: str) -> list[Transaction]:
+        # Try markdown table parsing first
         rows = parse_markdown_tables(markdown_text)
-        if len(rows) < 2:
-            return []
+        if len(rows) >= 2:
+            col_map = identify_columns(rows[0])
+            data_rows = rows[1:]
 
-        # Try to use first row as header
-        col_map = identify_columns(rows[0])
-        data_rows = rows[1:]
+            if "date" in col_map and "description" in col_map:
+                result = self._parse_mapped(data_rows, col_map)
+                if result:
+                    return result
 
-        # If header detection found enough columns, use mapped parsing
-        if "date" in col_map and "description" in col_map:
-            return self._parse_mapped(data_rows, col_map)
+            result = self._parse_heuristic(rows)
+            if result:
+                return result
 
-        # Fallback: heuristic parsing — scan each row for date/amount/description
-        return self._parse_heuristic(rows)
+        # Fallback: line-based parsing for non-table output
+        line_results = parse_lines(markdown_text)
+        if line_results:
+            return [
+                Transaction(
+                    date=r["date"],
+                    description=r["description"],
+                    amount=round(r["amount"], 2),
+                )
+                for r in line_results
+            ]
+
+        return []
 
     def _parse_mapped(self, rows: list[list[str]], col_map: dict[str, int]) -> list[Transaction]:
         transactions = []

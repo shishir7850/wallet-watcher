@@ -38,6 +38,16 @@ export default function Home() {
                 {state.data.warning}
               </div>
             )}
+            {state.data.debug_markdown && (
+              <details className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <summary className="text-sm font-medium text-gray-600 cursor-pointer">
+                  Debug: Raw markdown output
+                </summary>
+                <pre className="mt-2 text-xs text-gray-500 whitespace-pre-wrap overflow-x-auto max-h-96">
+                  {state.data.debug_markdown}
+                </pre>
+              </details>
+            )}
             <Dashboard data={state.data} />
           </div>
         ) : (

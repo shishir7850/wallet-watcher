@@ -88,6 +88,8 @@ class handler(BaseHTTPRequestHandler):
             transactions = parser.parse(markdown_text)
 
             if not transactions:
+                # Include raw markdown (truncated) for debugging
+                preview = markdown_text[:3000] if markdown_text else "(empty)"
                 self._respond(200, {
                     "bank": bank,
                     "transactions": [],
@@ -98,6 +100,7 @@ class handler(BaseHTTPRequestHandler):
                         "by_category": {},
                     },
                     "warning": "No transactions could be extracted. The PDF format may not be supported.",
+                    "debug_markdown": preview,
                 })
                 return
 

@@ -17,4 +17,5 @@ export interface ParseResponse {
   transactions: Transaction[];
   summary: Summary;
   warning?: string;
+  debug_markdown?: string;
 }
